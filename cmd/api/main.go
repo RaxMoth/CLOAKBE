@@ -2,34 +2,34 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"gin-rest-template/internal/config"
-	"gin-rest-template/internal/handlers"
-	"gin-rest-template/internal/middleware"
-	"gin-rest-template/internal/repository"
-	"gin-rest-template/internal/service"
-	"gin-rest-template/pkg/logger"
+	"CLOAKBE/internal/config"
+	"CLOAKBE/internal/database"
+	"CLOAKBE/internal/handler"
+	"CLOAKBE/internal/middleware"
+	"CLOAKBE/internal/repository"
+	"CLOAKBE/internal/usecase"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
-// @title           REST API Template
+// @title           CLOAK API
 // @version         1.0
-// @description     A production-ready REST API template with Gin framework
+// @description     Digital Ticketing System API
 // @termsOfService  http://swagger.io/terms/
 
-// @contact.name   API Support
-// @contact.email  support@example.com
+// @contact.name   Support
+// @contact.email  support@cloak.local
 
 // @license.name  MIT
-// @license.url   https://opensource.org/licenses/MIT
 
 // @host      localhost:8080
 // @BasePath  /api/v1
@@ -41,135 +41,116 @@ import (
 
 func main() {
 	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
+	cfg := config.Load()
 
-	// Initialize logger
-	logger.Init(cfg.LogLevel)
+	// Initialize database
+	db := database.New()
+	defer db.Close()
 
-	// Initialize repository based on database type
-	var repo repository.Repository
-	switch cfg.DatabaseType {
-	case "mysql":
-		repo, err = repository.NewMySQLRepository(cfg)
-		if err != nil {
-			logger.Fatal("Failed to initialize MySQL repository", "error", err)
-		}
-	case "firebase":
-		repo, err = repository.NewFirebaseRepository(cfg)
-		if err != nil {
-			logger.Fatal("Failed to initialize Firebase repository", "error", err)
-		}
-	default:
-		logger.Fatal("Invalid database type", "type", cfg.DatabaseType)
-	}
-	defer repo.Close()
+	// Init repositories
+	businessRepo := repository.NewPostgresBusinessRepository(db)
+	customerRepo := repository.NewPostgresCustomerRepository(db)
+	serviceRepo := repository.NewPostgresServiceRepository(db)
+	slotRepo := repository.NewPostgresSlotRepository(db)
+	ticketRepo := repository.NewPostgresTicketRepository(db)
 
-	// Initialize service layer
-	svc := service.NewService(repo, cfg)
+	// Init usecases
+	authUsecase := usecase.NewAuthUsecase(businessRepo, customerRepo, cfg.JWTSecret)
+	ticketUsecase := usecase.NewTicketUsecase(ticketRepo, slotRepo, serviceRepo, businessRepo)
+	serviceUsecase := usecase.NewServiceUsecase(serviceRepo, slotRepo, businessRepo)
 
-	// Initialize handlers
-	h := handlers.NewHandler(svc, cfg)
+	// Init handlers
+	authHandler := handler.NewAuthHandler(authUsecase)
+	ticketHandler := handler.NewTicketHandler(ticketUsecase)
+	serviceHandler := handler.NewServiceHandler(serviceUsecase)
 
-	// Setup router
-	router := setupRouter(cfg, h)
-
-	// Start server with graceful shutdown
-	startServer(router, cfg)
-}
-
-func setupRouter(cfg *config.Config, h *handlers.Handler) *gin.Engine {
-	// Set Gin mode
-	if cfg.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
-	router := gin.New()
+	// Setup Fiber app
+	app := fiber.New(fiber.Config{
+		AppName:      "CLOAK API v1.0",
+		BodyLimit:    1024 * 1024,
+		ErrorHandler: defaultErrorHandler,
+	})
 
 	// Global middleware
-	router.Use(gin.Recovery())
-	router.Use(middleware.RequestLogger())
-	router.Use(middleware.CORS())
-	router.Use(middleware.RateLimiterMiddleware(cfg.RateLimitRequests, cfg.RateLimitDuration))
+	app.Use(recover.New())
+	app.Use(logger.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Authorization",
+	}))
 
-	// Health check
-	router.GET("/health", h.HealthCheck)
+	// Health check endpoint
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok"})
+	})
 
-	// API v1 routes
-	v1 := router.Group("/api/v1")
-	{
-		// Public routes
-		auth := v1.Group("/auth")
-		{
-			auth.POST("/register", h.Register)
-			auth.POST("/login", h.Login)
-			auth.POST("/refresh", h.RefreshToken)
-		}
+	// Public routes
+	public := app.Group("/api/v1")
+	public.Post("/auth/business/register", authHandler.BusinessRegister)
+	public.Post("/auth/business/login", authHandler.BusinessLogin)
+	public.Post("/auth/customer/login", authHandler.CustomerLogin)
 
-		// Protected routes
-		protected := v1.Group("")
-		protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
-		{
-			// Example resource (albums)
-			albums := protected.Group("/albums")
-			{
-				albums.GET("", h.GetAlbums)
-				albums.GET("/:id", h.GetAlbumByID)
-				albums.POST("", h.CreateAlbum)
-				albums.PUT("/:id", h.UpdateAlbum)
-				albums.DELETE("/:id", h.DeleteAlbum)
-			}
+	// Protected routes (require JWT)
+	protected := app.Group("/api/v1")
+	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 
-			// User routes
-			users := protected.Group("/users")
-			{
-				users.GET("/me", h.GetCurrentUser)
-				users.PUT("/me", h.UpdateCurrentUser)
-			}
-		}
-	}
+	// Business routes (role: business)
+	business := protected.Group("/tickets")
+	business.Use(middleware.RoleMiddleware("business"))
+	business.Post("/checkin", ticketHandler.CheckIn)
+	business.Post("/scan", ticketHandler.Scan)
+	business.Post("/:id/release", ticketHandler.Release)
 
-	// Swagger documentation
-	if cfg.Environment != "production" {
-		// router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-		logger.Info("Swagger documentation available at http://localhost:" + cfg.Port + "/swagger/index.html")
-	}
+	// Service routes (role: business)
+	services := protected.Group("/services")
+	services.Use(middleware.RoleMiddleware("business"))
+	services.Post("", serviceHandler.CreateService)
+	services.Get("", serviceHandler.ListServices)
+	services.Get("/:id", serviceHandler.GetService)
+	services.Get("/:id/stats", serviceHandler.GetServiceStats)
 
-	return router
-}
+	// Customer routes (role: customer)
+	customer := protected.Group("/tickets")
+	customer.Use(middleware.RoleMiddleware("customer"))
+	customer.Get("/:id", ticketHandler.GetTicket)
 
-func startServer(router *gin.Engine, cfg *config.Config) {
-	srv := &http.Server{
-		Addr:           ":" + cfg.Port,
-		Handler:        router,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-
-	// Start server in a goroutine
+	// Start server with graceful shutdown
 	go func() {
-		logger.Info(fmt.Sprintf("Starting server on port %s", cfg.Port))
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("Failed to start server", "error", err)
+		log.Printf("Starting server on port %s", cfg.Port)
+		if err := app.Listen(":" + cfg.Port); err != nil && err != fiber.ErrListenerClosed {
+			log.Fatalf("Server error: %v", err)
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
+	// Wait for interrupt
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Info("Shutting down server...")
 
-	// Graceful shutdown with timeout
+	log.Println("Shutting down server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatal("Server forced to shutdown", "error", err)
+	if err := app.ShutdownWithContext(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
-	logger.Info("Server exited")
+	log.Println("Server exited")
+}
+
+func defaultErrorHandler(c *fiber.Ctx, err error) error {
+	code := fiber.StatusInternalServerError
+	msg := "Internal Server Error"
+
+	if fe, ok := err.(*fiber.Error); ok {
+		code = fe.Code
+		msg = fe.Message
+	}
+
+	return c.Status(code).JSON(fiber.Map{
+		"code":    code,
+		"message": msg,
+		"error":   err.Error(),
+	})
 }

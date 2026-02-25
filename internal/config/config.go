@@ -3,139 +3,65 @@ package config
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
 )
 
+// Config holds all application configuration
 type Config struct {
 	// Server
+	ServerPort  string
 	Environment string
-	Port        string
-	
+
 	// Database
-	DatabaseType string // "mysql" or "firebase"
-	
-	// MySQL
-	MySQLHost     string
-	MySQLPort     string
-	MySQLUser     string
-	MySQLPassword string
-	MySQLDatabase string
-	
-	// Firebase
-	FirebaseProjectID     string
-	FirebaseCredentials   string // Path to credentials file
-	
+	DatabaseURL string
+
 	// JWT
-	JWTSecret           string
-	JWTExpiration       time.Duration
-	JWTRefreshExpiration time.Duration
-	
-	// Rate Limiting
-	RateLimitRequests  int
-	RateLimitDuration  time.Duration
-	
-	// Logging
-	LogLevel string
+	JWTSecret string
+
+	// QR Signing
+	HMACSecret string
+
+	// API
+	APITimeout time.Duration
 }
 
+// Load reads configuration from environment variables
 func Load() (*Config, error) {
-	// Load .env file if it exists
+	// Load .env file if present
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Environment:           getEnv("ENVIRONMENT", "development"),
-		Port:                  getEnv("PORT", "8080"),
-		DatabaseType:          getEnv("DATABASE_TYPE", "mysql"),
-		
-		// MySQL
-		MySQLHost:             getEnv("MYSQL_HOST", "localhost"),
-		MySQLPort:             getEnv("MYSQL_PORT", "3306"),
-		MySQLUser:             getEnv("MYSQL_USER", "root"),
-		MySQLPassword:         getEnv("MYSQL_PASSWORD", ""),
-		MySQLDatabase:         getEnv("MYSQL_DATABASE", "gin_rest_db"),
-		
-		// Firebase
-		FirebaseProjectID:     getEnv("FIREBASE_PROJECT_ID", ""),
-		FirebaseCredentials:   getEnv("FIREBASE_CREDENTIALS", ""),
-		
-		// JWT
-		JWTSecret:             getEnv("JWT_SECRET", "your-secret-key-change-this"),
-		JWTExpiration:         getDurationEnv("JWT_EXPIRATION", 15*time.Minute),
-		JWTRefreshExpiration:  getDurationEnv("JWT_REFRESH_EXPIRATION", 7*24*time.Hour),
-		
-		// Rate Limiting
-		RateLimitRequests:     getIntEnv("RATE_LIMIT_REQUESTS", 100),
-		RateLimitDuration:     getDurationEnv("RATE_LIMIT_DURATION", 1*time.Minute),
-		
-		// Logging
-		LogLevel:              getEnv("LOG_LEVEL", "info"),
+		ServerPort:  getEnv("PORT", "8080"),
+		Environment: getEnv("ENVIRONMENT", "development"),
+		DatabaseURL: getEnv("DATABASE_URL", ""),
+		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		HMACSecret:  getEnv("HMAC_SECRET", "your-hmac-secret-change-in-production"),
+		APITimeout:  30 * time.Second,
 	}
 
-	if err := cfg.Validate(); err != nil {
-		return nil, err
+	// Validate required fields
+	if cfg.DatabaseURL == "" {
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
+	}
+
+	if cfg.Environment == "production" {
+		if cfg.JWTSecret == "your-secret-key-change-in-production" {
+			return nil, fmt.Errorf("JWT_SECRET must be set in production")
+		}
+		if cfg.HMACSecret == "your-hmac-secret-change-in-production" {
+			return nil, fmt.Errorf("HMAC_SECRET must be set in production")
+		}
 	}
 
 	return cfg, nil
 }
 
-func (c *Config) Validate() error {
-	if c.DatabaseType != "mysql" && c.DatabaseType != "firebase" {
-		return fmt.Errorf("invalid database type: %s (must be 'mysql' or 'firebase')", c.DatabaseType)
-	}
-
-	if c.DatabaseType == "mysql" {
-		if c.MySQLUser == "" || c.MySQLDatabase == "" {
-			return fmt.Errorf("MySQL configuration incomplete")
-		}
-	}
-
-	if c.DatabaseType == "firebase" {
-		if c.FirebaseProjectID == "" || c.FirebaseCredentials == "" {
-			return fmt.Errorf("Firebase configuration incomplete")
-		}
-	}
-
-	if c.JWTSecret == "your-secret-key-change-this" {
-		fmt.Println("WARNING: Using default JWT secret. Please change it in production!")
-	}
-
-	return nil
-}
-
-func (c *Config) GetMySQLDSN() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		c.MySQLUser,
-		c.MySQLPassword,
-		c.MySQLHost,
-		c.MySQLPort,
-		c.MySQLDatabase,
-	)
-}
-
+// getEnv returns an environment variable or a default value
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
-	}
-	return defaultValue
-}
-
-func getIntEnv(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
-
-func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
 	}
 	return defaultValue
 }

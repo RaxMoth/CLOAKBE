@@ -1,3 +1,6 @@
--- Drop tables
-DROP TABLE IF EXISTS albums;
-DROP TABLE IF EXISTS users;
+-- Drop tables in reverse order of creation
+DROP TABLE IF EXISTS tickets CASCADE;
+DROP TABLE IF EXISTS slots CASCADE;
+DROP TABLE IF EXISTS services CASCADE;
+DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS businesses CASCADE;

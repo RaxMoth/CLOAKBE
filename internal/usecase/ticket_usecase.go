@@ -87,13 +87,13 @@ func (u *TicketUsecase) CheckIn(ctx context.Context, req CheckInRequest) (*Check
 
 	// Sign payload with business HMAC key
 	if err := payload.Sign(business.HMACKey); err != nil {
-		return nil, apperror.NewInternalServer("QR signing failed")
+		return nil, apperror.NewInternalServer("QR signing failed", err)
 	}
 
 	// Encode payload to base64
 	encoded, err := payload.Encode()
 	if err != nil {
-		return nil, apperror.NewInternalServer("QR encoding failed")
+		return nil, apperror.NewInternalServer("QR encoding failed", err)
 	}
 
 	// Create ticket record

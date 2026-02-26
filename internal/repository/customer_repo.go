@@ -5,19 +5,19 @@ import (
 	"errors"
 
 	"CLOAKBE/internal/apperror"
+	"CLOAKBE/internal/database"
 	"CLOAKBE/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresCustomerRepository struct {
-	pool *pgxpool.Pool
+	db *database.Pool
 }
 
-func NewPostgresCustomerRepository(pool *pgxpool.Pool) domain.CustomerRepository {
-	return &PostgresCustomerRepository{pool: pool}
+func NewPostgresCustomerRepository(db *database.Pool) *PostgresCustomerRepository {
+	return &PostgresCustomerRepository{db: db}
 }
 
 func (r *PostgresCustomerRepository) Create(ctx context.Context, customer *domain.Customer) error {
@@ -26,12 +26,12 @@ func (r *PostgresCustomerRepository) Create(ctx context.Context, customer *domai
 		VALUES ($1, $2, $3, $4)
 	`
 
-	_, err := r.pool.Exec(ctx, query, customer.ID, customer.Email, customer.Phone, customer.CreatedAt)
+	_, err := r.db.Exec(ctx, query, customer.ID, customer.Email, customer.Phone, customer.CreatedAt)
 	if err != nil {
 		if err.Error() == "ERROR: duplicate key value violates unique constraint \"customers_email_key\" (SQLSTATE 23505)" {
 			return apperror.NewConflict("email already exists")
 		}
-		return apperror.NewDatabaseError(err)
+		return apperror.NewDatabaseError("failed to create customer", err)
 	}
 
 	return nil
@@ -44,15 +44,15 @@ func (r *PostgresCustomerRepository) FindByID(ctx context.Context, id string) (*
 		WHERE id = $1
 	`
 
-	row := r.pool.QueryRow(ctx, query, id)
+	row := r.db.QueryRow(ctx, query, id)
 	customer := &domain.Customer{}
 
 	err := row.Scan(&customer.ID, &customer.Email, &customer.Phone, &customer.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.NewNotFound("customer not found")
+			return nil, apperror.NewNotFound("customer")
 		}
-		return nil, apperror.NewDatabaseError(err)
+		return nil, apperror.NewDatabaseError("failed to find customer", err)
 	}
 
 	return customer, nil
@@ -65,15 +65,15 @@ func (r *PostgresCustomerRepository) FindByEmail(ctx context.Context, email stri
 		WHERE email = $1
 	`
 
-	row := r.pool.QueryRow(ctx, query, email)
+	row := r.db.QueryRow(ctx, query, email)
 	customer := &domain.Customer{}
 
 	err := row.Scan(&customer.ID, &customer.Email, &customer.Phone, &customer.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.NewNotFound("customer not found")
+			return nil, apperror.NewNotFound("customer")
 		}
-		return nil, apperror.NewDatabaseError(err)
+		return nil, apperror.NewDatabaseError("failed to find customer", err)
 	}
 
 	return customer, nil

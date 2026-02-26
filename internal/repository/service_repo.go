@@ -5,18 +5,18 @@ import (
 	"errors"
 
 	"CLOAKBE/internal/apperror"
+	"CLOAKBE/internal/database"
 	"CLOAKBE/internal/domain"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresServiceRepository struct {
-	pool *pgxpool.Pool
+	db *database.Pool
 }
 
-func NewPostgresServiceRepository(pool *pgxpool.Pool) domain.ServiceRepository {
-	return &PostgresServiceRepository{pool: pool}
+func NewPostgresServiceRepository(db *database.Pool) *PostgresServiceRepository {
+	return &PostgresServiceRepository{db: db}
 }
 
 func (r *PostgresServiceRepository) Create(ctx context.Context, service *domain.Service) error {
@@ -25,7 +25,7 @@ func (r *PostgresServiceRepository) Create(ctx context.Context, service *domain.
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	_, err := r.pool.Exec(ctx, query,
+	_, err := r.db.Exec(ctx, query,
 		service.ID,
 		service.BusinessID,
 		service.Name,
@@ -34,7 +34,7 @@ func (r *PostgresServiceRepository) Create(ctx context.Context, service *domain.
 		service.UpdatedAt,
 	)
 	if err != nil {
-		return apperror.NewDatabaseError(err)
+		return apperror.NewDatabaseError("failed to create service", err)
 	}
 
 	return nil
@@ -47,15 +47,15 @@ func (r *PostgresServiceRepository) FindByID(ctx context.Context, id string) (*d
 		WHERE id = $1
 	`
 
-	row := r.pool.QueryRow(ctx, query, id)
+	row := r.db.QueryRow(ctx, query, id)
 	service := &domain.Service{}
 
 	err := row.Scan(&service.ID, &service.BusinessID, &service.Name, &service.TotalSlots, &service.CreatedAt, &service.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.NewNotFound("service not found")
+			return nil, apperror.NewNotFound("service")
 		}
-		return nil, apperror.NewDatabaseError(err)
+		return nil, apperror.NewDatabaseError("failed to find service", err)
 	}
 
 	return service, nil
@@ -69,9 +69,9 @@ func (r *PostgresServiceRepository) ListByBusinessID(ctx context.Context, busine
 		ORDER BY created_at DESC
 	`
 
-	rows, err := r.pool.Query(ctx, query, businessID)
+	rows, err := r.db.Query(ctx, query, businessID)
 	if err != nil {
-		return nil, apperror.NewDatabaseError(err)
+		return nil, apperror.NewDatabaseError("failed to list services", err)
 	}
 	defer rows.Close()
 
@@ -79,13 +79,13 @@ func (r *PostgresServiceRepository) ListByBusinessID(ctx context.Context, busine
 	for rows.Next() {
 		service := domain.Service{}
 		if err := rows.Scan(&service.ID, &service.BusinessID, &service.Name, &service.TotalSlots, &service.CreatedAt, &service.UpdatedAt); err != nil {
-			return nil, apperror.NewDatabaseError(err)
+			return nil, apperror.NewDatabaseError("failed to scan service", err)
 		}
 		services = append(services, service)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, apperror.NewDatabaseError(err)
+		return nil, apperror.NewDatabaseError("failed to iterate services", err)
 	}
 
 	return services, nil
@@ -98,9 +98,9 @@ func (r *PostgresServiceRepository) Update(ctx context.Context, service *domain.
 		WHERE id = $4
 	`
 
-	result, err := r.pool.Exec(ctx, query, service.Name, service.TotalSlots, service.UpdatedAt, service.ID)
+	result, err := r.db.Exec(ctx, query, service.Name, service.TotalSlots, service.UpdatedAt, service.ID)
 	if err != nil {
-		return apperror.NewDatabaseError(err)
+		return apperror.NewDatabaseError("failed to update service", err)
 	}
 
 	if result.RowsAffected() == 0 {
@@ -113,9 +113,9 @@ func (r *PostgresServiceRepository) Update(ctx context.Context, service *domain.
 func (r *PostgresServiceRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM services WHERE id = $1`
 
-	result, err := r.pool.Exec(ctx, query, id)
+	result, err := r.db.Exec(ctx, query, id)
 	if err != nil {
-		return apperror.NewDatabaseError(err)
+		return apperror.NewDatabaseError("failed to delete service", err)
 	}
 
 	if result.RowsAffected() == 0 {

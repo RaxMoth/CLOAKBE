@@ -6,7 +6,6 @@ import (
 	"CLOAKBE/internal/apperror"
 	"CLOAKBE/internal/usecase"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -84,20 +83,29 @@ func RoleMiddleware(allowedRoles ...string) fiber.Handler {
 	}
 }
 
-// GetUserID is a helper function to get user ID from context
-func GetUserID(c *gin.Context) string {
-	userID, exists := c.Get("user_id")
-	if !exists {
+// GetUserIDFromContext is a helper function to get user ID from Fiber context
+func GetUserIDFromContext(c *fiber.Ctx) string {
+	userID := c.Locals("user_id")
+	if userID == nil {
 		return ""
 	}
 	return userID.(string)
 }
 
-// GetEmail is a helper function to get email from context
-func GetEmail(c *gin.Context) string {
-	email, exists := c.Get("email")
-	if !exists {
+// GetEmailFromContext is a helper function to get email from Fiber context
+func GetEmailFromContext(c *fiber.Ctx) string {
+	email := c.Locals("email")
+	if email == nil {
 		return ""
 	}
 	return email.(string)
+}
+
+// GetRoleFromContext is a helper function to get role from Fiber context
+func GetRoleFromContext(c *fiber.Ctx) string {
+	role := c.Locals("role")
+	if role == nil {
+		return ""
+	}
+	return role.(string)
 }

@@ -66,7 +66,7 @@ type CustomClaims struct {
 // BusinessRegister handles business registration
 func (u *AuthUsecase) BusinessRegister(ctx context.Context, req BusinessRegisterRequest) (*AuthResponse, error) {
 	if req.Email == "" || req.Password == "" || req.Name == "" {
-		return nil, apperror.NewValidationError("email, password, and name are required")
+		return nil, apperror.NewValidationError("email, password, and name are required", map[string]string{})
 	}
 
 	// Check if business already exists
@@ -81,10 +81,9 @@ func (u *AuthUsecase) BusinessRegister(ctx context.Context, req BusinessRegister
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, apperror.NewInternalServer("password hashing failed")
+		return nil, apperror.NewInternalServer("password hashing failed", err)
 	}
 
-	// Create business
 	business := &domain.Business{
 		ID:        uuid.New().String(),
 		Name:      req.Name,
@@ -116,7 +115,7 @@ func (u *AuthUsecase) BusinessRegister(ctx context.Context, req BusinessRegister
 // BusinessLogin handles business login
 func (u *AuthUsecase) BusinessLogin(ctx context.Context, req BusinessLoginRequest) (*AuthResponse, error) {
 	if req.Email == "" || req.Password == "" {
-		return nil, apperror.NewValidationError("email and password are required")
+		return nil, apperror.NewValidationError("email and password are required", map[string]string{})
 	}
 
 	// Find business by email
@@ -149,7 +148,7 @@ func (u *AuthUsecase) BusinessLogin(ctx context.Context, req BusinessLoginReques
 // CustomerLogin handles customer login (upsert pattern)
 func (u *AuthUsecase) CustomerLogin(ctx context.Context, req CustomerLoginRequest) (*AuthResponse, error) {
 	if req.Email == "" {
-		return nil, apperror.NewValidationError("email is required")
+		return nil, apperror.NewValidationError("email is required", map[string]string{})
 	}
 
 	// Find or create customer
@@ -187,7 +186,7 @@ func (u *AuthUsecase) generateToken(userID, email, role string) (string, error) 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(u.jwtSecret))
 	if err != nil {
-		return "", apperror.NewInternalServer("token generation failed")
+		return "", apperror.NewInternalServer("token generation failed", err)
 	}
 
 	return tokenString, nil

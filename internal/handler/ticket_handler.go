@@ -79,7 +79,7 @@ func (h *TicketHandler) Release(c *fiber.Ctx) error {
 
 // GetTicket handles GET /tickets/:id - Customer views their ticket
 func (h *TicketHandler) GetTicket(c *fiber.Ctx) error {
-	customerID := c.Locals("user_id").(string)
+	_ = c.Locals("user_id").(string) // customerID - will be used when implementing actual logic
 	ticketID := c.Params("id")
 
 	if ticketID == "" {

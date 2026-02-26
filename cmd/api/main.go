@@ -41,10 +41,19 @@ import (
 
 func main() {
 	// Load configuration
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
 	// Initialize database
-	db := database.New()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	db, err := database.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
 	defer db.Close()
 
 	// Init repositories
@@ -117,8 +126,8 @@ func main() {
 
 	// Start server with graceful shutdown
 	go func() {
-		log.Printf("Starting server on port %s", cfg.Port)
-		if err := app.Listen(":" + cfg.Port); err != nil && err != fiber.ErrListenerClosed {
+		log.Printf("Starting server on port %s", cfg.ServerPort)
+		if err := app.Listen(":" + cfg.ServerPort); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()
@@ -129,10 +138,10 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := app.ShutdownWithContext(ctx); err != nil {
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 

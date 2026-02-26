@@ -3,10 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
-
-	"github.com/RaxMoth/qrcheck-backend/internal/database"
-	"github.com/RaxMoth/qrcheck-backend/internal/domain"
+	"CLOAKBE/internal/database"
+	"CLOAKBE/internal/domain"
 )
 
 // PostgresBusinessRepository implements BusinessRepository for PostgreSQL
@@ -20,28 +18,21 @@ func NewPostgresBusinessRepository(db *database.Pool) *PostgresBusinessRepositor
 }
 
 // Create creates a new business
-func (r *PostgresBusinessRepository) Create(ctx context.Context, b *domain.Business) (*domain.Business, error) {
+func (r *PostgresBusinessRepository) Create(ctx context.Context, b *domain.Business) error {
 	query := `
 		INSERT INTO businesses (id, name, email, password, role, hmac_key, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-		RETURNING id, name, email, password, role, hmac_key, created_at, updated_at
 	`
 
 	err := r.db.QueryRow(ctx, query,
 		b.ID, b.Name, b.Email, b.Password, b.Role, b.HMACKey,
-	).Scan(
-		&b.ID, &b.Name, &b.Email, &b.Password, &b.Role, &b.HMACKey, &b.CreatedAt, &b.UpdatedAt,
-	)
+	).Scan()
 
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return err
 }
 
 // FindByID finds a business by ID
-func (r *PostgresBusinessRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Business, error) {
+func (r *PostgresBusinessRepository) FindByID(ctx context.Context, id string) (*domain.Business, error) {
 	query := `
 		SELECT id, name, email, password, role, hmac_key, created_at, updated_at
 		FROM businesses WHERE id = $1
@@ -79,23 +70,16 @@ func (r *PostgresBusinessRepository) FindByEmail(ctx context.Context, email stri
 }
 
 // Update updates a business
-func (r *PostgresBusinessRepository) Update(ctx context.Context, b *domain.Business) (*domain.Business, error) {
+func (r *PostgresBusinessRepository) Update(ctx context.Context, b *domain.Business) error {
 	query := `
 		UPDATE businesses
 		SET name = $2, email = $3, password = $4, hmac_key = $5, updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, name, email, password, role, hmac_key, created_at, updated_at
 	`
 
 	err := r.db.QueryRow(ctx, query,
 		b.ID, b.Name, b.Email, b.Password, b.HMACKey,
-	).Scan(
-		&b.ID, &b.Name, &b.Email, &b.Password, &b.Role, &b.HMACKey, &b.CreatedAt, &b.UpdatedAt,
-	)
+	).Scan()
 
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return err
 }

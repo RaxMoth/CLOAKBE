@@ -56,7 +56,7 @@ type ServiceStatsResponse struct {
 // CreateService creates a new service and generates slots
 func (u *ServiceUsecase) CreateService(ctx context.Context, req CreateServiceRequest) (*ServiceResponse, error) {
 	if req.Name == "" || req.TotalSlots <= 0 {
-		return nil, apperror.NewValidationError("name and total_slots (>0) are required")
+		return nil, apperror.NewValidationError("name and totalSlots are required", map[string]string{})
 	}
 
 	// Verify business exists

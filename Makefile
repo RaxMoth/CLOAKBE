@@ -20,6 +20,10 @@ help:
 	@echo "  make start       - Start everything (db + migrations + backend)"
 	@echo "  make stop        - Stop database"
 	@echo ""
+	@echo "Local Testing with ngrok:"
+	@echo "  make tunnel      - Start ngrok tunnel (for Flutter testing)"
+	@echo "  make tunnel-help - Show ngrok workflow"
+	@echo ""
 	@echo "Database:"
 	@echo "  make db-up       - Start PostgreSQL container"
 	@echo "  make db-down     - Stop PostgreSQL container"
@@ -131,6 +135,28 @@ migrate-down:
 backend:
 	@echo "Starting CLOAK Backend on http://localhost:8080"
 	@./bin/api
+
+tunnel:
+	@echo "Starting ngrok tunnel to localhost:8080..."
+	@echo ""
+	@echo "⚠️  Copy the HTTPS URL below and update:"
+	@echo "    lib/core/constants/app_constants.dart in your Flutter app"
+	@echo ""
+	ngrok http 8080
+
+tunnel-help:
+	@echo "To use ngrok tunnel for local development:"
+	@echo ""
+	@echo "Terminal 1:"
+	@echo "  make start    # Start backend + database"
+	@echo ""
+	@echo "Terminal 2:"
+	@echo "  make tunnel   # Start ngrok tunnel"
+	@echo ""
+	@echo "Terminal 3:"
+	@echo "  flutter run -d macos  # Start Flutter app"
+	@echo ""
+	@echo "Then update Flutter app with ngrok URL and hot reload (R)"
 
 build:
 	@echo "Building backend..."

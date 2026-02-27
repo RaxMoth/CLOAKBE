@@ -1,6 +1,8 @@
 # Environment variables - Never commit these
 .env
 .env.local
+.env.dev
+.env.prod
 .env.*.local
 .env.production
 

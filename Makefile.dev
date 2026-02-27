@@ -11,11 +11,6 @@ CONTAINER_NAME=postgres-cloak
 help:
 	@echo "=== CLOAK Backend - Quick Commands ==="
 	@echo ""
-	@echo "Environments:"
-	@echo "  make env-local   - Setup local development environment"
-	@echo "  make env-dev     - Setup development environment"
-	@echo "  make env-prod    - Setup production environment"
-	@echo ""
 	@echo "Quick Start:"
 	@echo "  make start       - Start everything (db + migrations + backend)"
 	@echo "  make stop        - Stop database"
@@ -26,7 +21,7 @@ help:
 	@echo "  make db-shell    - Open PostgreSQL shell"
 	@echo ""
 	@echo "Setup & Migration:"
-	@echo "  make setup-env   - Create .env file (uses .env.local by default)"
+	@echo "  make setup-env   - Create .env file"
 	@echo "  make migrate     - Run database migrations"
 	@echo ""
 	@echo "Backend:"
@@ -47,31 +42,6 @@ start: db-up migrate backend
 
 stop: db-down
 	@echo "Stopped"
-
-# ============ ENVIRONMENT SETUP ============
-
-env-local:
-	@echo "✓ Setting up local development environment"
-	@cp .env.local .env 2>/dev/null || echo "Using existing .env.local"
-	@echo "✓ Using .env.local configuration"
-	@echo "  Database: localhost:5432"
-	@echo "  Port: 8080"
-	@echo "  JWT: dev secret (NOT for production)"
-
-env-dev:
-	@echo "✓ Setting up development environment"
-	@cp .env.dev .env 2>/dev/null || echo "Using .env.dev"
-	@echo "⚠️  Please update .env.dev with your dev server details:"
-	@grep "CHANGE_ME" .env.dev || echo "✓ Configuration looks good"
-
-env-prod:
-	@echo "✓ Setting up production environment"
-	@cp .env.prod .env 2>/dev/null || echo "Using .env.prod"
-	@echo "⚠️  CRITICAL: Update .env.prod with secure production secrets:"
-	@echo "   - JWT_SECRET: Use 'openssl rand -base64 32' for secure key"
-	@echo "   - HMAC_SECRET: Use 'openssl rand -base64 32' for secure key"
-	@echo "   - DATABASE_URL: Use production database credentials"
-	@grep "CHANGE_ME" .env.prod
 
 # ============ DATABASE ============
 

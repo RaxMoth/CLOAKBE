@@ -28,9 +28,19 @@ type Config struct {
 }
 
 // Load reads configuration from environment variables
+// It loads from .env.local (local dev), .env.dev (staging), or .env.prod (production)
 func Load() (*Config, error) {
-	// Load .env file if present
-	_ = godotenv.Load()
+	// Determine which .env file to load
+	// Priority: .env.local > .env.dev > .env.prod > .env (fallback)
+	envFiles := []string{".env.local", ".env.dev", ".env.prod", ".env"}
+
+	for _, envFile := range envFiles {
+		if err := godotenv.Load(envFile); err == nil {
+			fmt.Printf("✓ Loaded configuration from %s\n", envFile)
+			break
+		}
+	}
+	// Continue even if no .env file found (env vars might be set)
 
 	cfg := &Config{
 		ServerPort:  getEnv("PORT", "8080"),

@@ -84,9 +84,12 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders: "Origin,Content-Type,Authorization",
+		AllowOrigins:     "*",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
+		AllowHeaders:     "Origin,Content-Type,Authorization,Accept",
+		ExposeHeaders:    "Content-Length",
+		AllowCredentials: false,
+		MaxAge:           300,
 	}))
 
 	// Health check endpoint

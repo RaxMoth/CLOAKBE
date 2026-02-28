@@ -1,128 +1,126 @@
-# REST API Template with Gin Framework
+# CLOAK Backend (CLOAKBE)
 
-A production-ready REST API template built with Go and Gin framework. This template supports both MySQL and Firebase as database backends, includes JWT authentication, rate limiting, request logging, CORS middleware, and comes with Swagger documentation.
+A high-performance Go/Fiber REST API backend for the CLOAK digital ticketing system. Provides complete ticket management, business authentication, and real-time slot reservation with PostgreSQL persistence.
 
-## Features
+## 🎯 Project Overview
 
-- ✅ **Clean Architecture** - Separation of concerns with handlers, services, and repositories
-- ✅ **Database Agnostic** - Support for both MySQL and Firebase
-- ✅ **JWT Authentication** - Secure authentication with access and refresh tokens
-- ✅ **Rate Limiting** - IP-based rate limiting to prevent abuse
-- ✅ **Request Logging** - Comprehensive request/response logging
-- ✅ **CORS Support** - Cross-Origin Resource Sharing middleware
-- ✅ **Swagger Documentation** - Auto-generated API documentation
-- ✅ **Docker Support** - Containerized deployment with Docker Compose
-- ✅ **Database Migrations** - Version-controlled database schema
-- ✅ **Graceful Shutdown** - Proper server shutdown handling
-- ✅ **Environment Configuration** - Easy configuration via environment variables
-- ✅ **Pagination** - Built-in pagination support for list endpoints
-- ✅ **Error Handling** - Consistent error responses
-- ✅ **Input Validation** - Request validation using binding tags
+**CLOAK** is a B2B SaaS platform for managing digital tickets at events and venues. CLOAKBE handles:
 
-## Project Structure
+- **Business Management** - Registration, authentication, service creation
+- **Ticket Lifecycle** - Check-in (QR generation), scanning/verification, release/cancellation
+- **Slot Management** - Real-time seat/capacity management with row-level locking
+- **QR Security** - HMAC-SHA256 signed QR codes for verification integrity
+
+## 🛠️ Technology Stack
+
+- **Go 1.22+** - Language
+- **Fiber v2** - Web framework (fast, lightweight)
+- **PostgreSQL 16** - Database
+- **pgx/v5** - Database driver (prepared statements, async)
+- **JWT (golang-jwt)** - Authentication tokens
+- **bcrypt** - Password hashing
+- **Docker** - Containerization
+
+## 📋 Project Structure
 
 ```
-gin-rest-template/
+CLOAKBE/
 ├── cmd/
 │   └── api/
-│       └── main.go              # Application entry point
+│       └── main.go                  # Application entry point
 ├── internal/
 │   ├── config/
-│   │   └── config.go            # Configuration management
-│   ├── handlers/
-│   │   └── handlers.go          # HTTP request handlers
-│   ├── middleware/
-│   │   ├── auth.go              # JWT authentication middleware
-│   │   ├── cors.go              # CORS middleware
-│   │   ├── logger.go            # Request logging middleware
-│   │   └── rate_limiter.go      # Rate limiting middleware
-│   ├── models/
-│   │   └── models.go            # Data models and DTOs
+│   │   └── config.go                # Environment & config management
+│   ├── domain/
+│   │   └── entities.go              # Domain models & repository interfaces
+│   ├── apperror/
+│   │   ├── errors.go                # Typed error system with HTTP status
+│   │   └── helpers.go               # Error checking predicates
+│   ├── database/
+│   │   └── db.go                    # PostgreSQL connection pool
+│   ├── qr/
+│   │   └── payload.go               # QR signing & encoding/decoding
+│   ├── usecase/
+│   │   ├── auth_usecase.go          # Authentication logic
+│   │   ├── ticket_usecase.go        # Ticket operations
+│   │   └── service_usecase.go       # Service management
 │   ├── repository/
-│   │   ├── repository.go        # Repository interface
-│   │   ├── mysql_repository.go  # MySQL implementation
-│   │   └── firebase_repository.go # Firebase implementation
-│   └── service/
-│       └── service.go           # Business logic layer
-├── pkg/
-│   └── logger/
-│       └── logger.go            # Logger package
-├── migrations/                   # Database migrations
-├── docs/                        # Swagger documentation
-├── .env.example                 # Example environment variables
-├── .gitignore
-├── docker-compose.yml
-├── Dockerfile
-├── Makefile
-├── go.mod
-└── README.md
+│   │   ├── business_repo.go         # Business CRUD
+│   │   ├── customer_repo.go         # Customer CRUD + upsert
+│   │   ├── service_repo.go          # Service CRUD
+│   │   ├── slot_repo.go             # Slot operations (read/update/release)
+│   │   └── ticket_repo.go           # Ticket CRUD
+│   ├── handler/
+│   │   ├── auth_handler.go          # HTTP auth endpoints
+│   │   ├── ticket_handler.go        # HTTP ticket endpoints
+│   │   └── service_handler.go       # HTTP service endpoints
+│   └── middleware/
+│       └── auth.go                  # JWT validation & role enforcement
+├── migrations/
+│   ├── 000001_init_schema.up.sql    # Database schema creation
+│   └── 000001_init_schema.down.sql  # Rollback script
+├── docs/
+│   ├── INDEX.md                     # Documentation index
+│   ├── QUICK_START.md               # Quick start guide
+│   ├── SESSION_SUMMARY.md           # What was built & current status
+│   ├── ENVIRONMENTS.md              # Environment setup guide
+│   ├── MAKEFILE_GUIDE.md            # All available make commands
+│   ├── DEPLOYMENT_GUIDE.md          # Deployment instructions
+│   └── TESTING_STATUS.md            # Testing coverage & status
+├── .env.example                     # Example environment variables
+├── Dockerfile                       # Docker image definition
+├── docker-compose.yml               # Local development containers
+├── Makefile                         # Build & run automation
+├── go.mod                           # Go dependencies
+├── go.sum                           # Dependency checksums
+└── README.md                        # This file
 ```
 
-## Getting Started
-
-> **Quick Start**: For detailed local development setup instructions, see [LOCAL_SETUP.md](docs/LOCAL_SETUP.md)
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- Docker and Docker Compose (optional)
-- MySQL 8.0 or higher (if using MySQL)
-- Firebase project and credentials (if using Firebase)
+- Go 1.22+
+- PostgreSQL 16+ (local or Docker)
+- Make (usually pre-installed macOS/Linux)
+- Docker & Docker Compose (optional, for containerized setup)
 
-### Installation
+### Local Setup (Development)
 
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/yourusername/gin-rest-template.git
-cd gin-rest-template
-```
-
-2. **Install dependencies**
+**1. Clone and setup:**
 
 ```bash
-make install
-# or
-go mod download
-```
-
-3. **Set up environment variables**
-
-```bash
+cd CLOAKBE
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration:
+**2. Create PostgreSQL database:**
 
-```env
-# For MySQL
-DATABASE_TYPE=mysql
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=yourpassword
-MYSQL_DATABASE=gin_rest_db
-
-# For Firebase
-DATABASE_TYPE=firebase
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CREDENTIALS=./serviceAccountKey.json
+```bash
+createdb cloak
 ```
 
-### Running the Application
+**3. Apply database migrations:**
 
-#### Option 1: Run Locally
+```bash
+make migrate-up
+# or manually:
+# psql cloak < migrations/000001_init_schema.up.sql
+```
+
+**4. Run the API:**
 
 ```bash
 make run
-# or
-go run cmd/api/main.go
+# or: go run cmd/api/main.go
 ```
 
-#### Option 2: Run with Docker
+API will be available at `http://localhost:8080`
+
+### Docker Setup (Recommended)
 
 ```bash
-# Build and start containers
+# Build and start all containers (PostgreSQL + API)
 make docker-up
 
 # View logs
@@ -132,295 +130,232 @@ make docker-logs
 make docker-down
 ```
 
-The API will be available at `http://localhost:8080`
-
-## API Endpoints
+## 📡 API Endpoints
 
 ### Authentication
 
-| Method | Endpoint                | Description          | Auth Required |
-| ------ | ----------------------- | -------------------- | ------------- |
-| POST   | `/api/v1/auth/register` | Register new user    | No            |
-| POST   | `/api/v1/auth/login`    | Login user           | No            |
-| POST   | `/api/v1/auth/refresh`  | Refresh access token | No            |
+| Method | Endpoint                        | Body                                     | Auth? |
+| ------ | ------------------------------- | ---------------------------------------- | ----- |
+| POST   | `/api/v1/auth/business/register`| `{email, password, business_name}`       | No    |
+| POST   | `/api/v1/auth/business/login`   | `{email, password}`                      | No    |
+| POST   | `/api/v1/auth/customer/login`   | `{phone_number}`                         | No    |
 
-### Users
+**Response:** `{access_token, refresh_token, user_id, role}`
 
-| Method | Endpoint           | Description         | Auth Required |
-| ------ | ------------------ | ------------------- | ------------- |
-| GET    | `/api/v1/users/me` | Get current user    | Yes           |
-| PUT    | `/api/v1/users/me` | Update current user | Yes           |
+### Tickets (Business)
 
-### Albums (Example Resource)
+| Method | Endpoint                    | Body / Query                     | Auth? |
+| ------ | --------------------------- | -------------------------------- | ----- |
+| POST   | `/api/v1/tickets/checkin`   | `{service_id, customer_id}`      | Yes   |
+| POST   | `/api/v1/tickets/scan`      | `{qr_payload, hmac_signature}`   | Yes   |
+| POST   | `/api/v1/tickets/:id/release` | `-`                            | Yes   |
 
-| Method | Endpoint             | Description      | Auth Required |
-| ------ | -------------------- | ---------------- | ------------- |
-| GET    | `/api/v1/albums`     | Get all albums   | Yes           |
-| GET    | `/api/v1/albums/:id` | Get album by ID  | Yes           |
-| POST   | `/api/v1/albums`     | Create new album | Yes           |
-| PUT    | `/api/v1/albums/:id` | Update album     | Yes           |
-| DELETE | `/api/v1/albums/:id` | Delete album     | Yes           |
+### Services (Business)
+
+| Method | Endpoint                  | Body / Query              | Auth? |
+| ------ | ------------------------- | ------------------------- | ----- |
+| POST   | `/api/v1/services`        | `{name, capacity}`        | Yes   |
+| GET    | `/api/v1/services`        | `?page=1&limit=10`        | Yes   |
+| GET    | `/api/v1/services/:id`    | `-`                       | Yes   |
+| GET    | `/api/v1/services/:id/stats` | `-`                     | Yes   |
 
 ### Health Check
 
-| Method | Endpoint  | Description  | Auth Required |
-| ------ | --------- | ------------ | ------------- |
-| GET    | `/health` | Health check | No            |
+| Method | Endpoint | Auth? |
+| ------ | -------- | ----- |
+| GET    | `/health`| No    |
 
-## API Usage Examples
+## 📚 Documentation
 
-### Register a new user
+For detailed information, see the `docs/` folder:
+
+- [SESSION_SUMMARY.md](docs/SESSION_SUMMARY.md) - Overview of what's been completed
+- [QUICK_START.md](docs/QUICK_START.md) - Detailed local + Flutter setup
+- [ENVIRONMENTS.md](docs/ENVIRONMENTS.md) - Environment variables guide
+- [MAKEFILE_GUIDE.md](docs/MAKEFILE_GUIDE.md) - All available make commands
+- [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) - Deployment to production
+- [TESTING_STATUS.md](docs/TESTING_STATUS.md) - Testing & coverage info
+
+## 🔐 Security
+
+- **JWT Tokens**: 15-minute access, 7-day refresh tokens
+- **Password Hashing**: bcrypt with 12 salt rounds
+- **QR Verification**: HMAC-SHA256 signing with business-specific keys
+- **Database**: Row-level locking on slot operations (prevents race conditions)
+- **CORS**: Configured for frontend domain
+
+## 🗄️ Database
+
+### PostgreSQL Schema Highlights
+
+- `businesses` - Business accounts with bcrypt passwords
+- `customers` - Customer profiles
+- `services` - Event/venue services with capacity
+- `slots` - Individual capacity units (e.g., seats) with availability
+- `tickets` - Ticket records with check-in status
+- **Row-Level Locking**: Prevents race conditions on slot claims
+
+See [migrations/000001_init_schema.up.sql](migrations/000001_init_schema.up.sql) for full schema.
+
+## 📊 Clean Architecture
+
+```
+HTTP Request
+    ↓
+Handler (HTTP parsing, validation)
+    ↓
+Usecase (business logic, orchestration)
+    ↓
+Repository (data access, persistence)
+    ↓
+PostgreSQL Database
+```
+
+Each layer is independently testable and loosely coupled.
+
+## 🔨 Available Make Commands
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123",
-    "name": "John Doe"
-  }'
+make help                  # Show all commands
+make install               # Download Go dependencies
+make run                   # Run API locally (go run)
+make build                 # Build binary: ./bin/api
+make test                  # Run all tests
+make test-cover            # Run tests with coverage
+make docker-build          # Build Docker image
+make docker-up             # Start containers (Compose)
+make docker-down           # Stop containers
+make docker-logs           # View container logs
+make migrate-up            # Apply migrations
+make migrate-down          # Rollback migrations
+make fmt                   # Format code (gofmt)
+make lint                  # Run linter (golangci-lint)
+make clean                 # Remove build artifacts
 ```
 
-### Login
+## 🧪 Testing
+
+Run the test suite:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123"
-  }'
-```
-
-Response:
-
-```json
-{
-    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "token_type": "Bearer",
-    "expires_in": 900
-}
-```
-
-### Create an album (with authentication)
-
-```bash
-curl -X POST http://localhost:8080/api/v1/albums \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -d '{
-    "title": "Abbey Road",
-    "artist": "The Beatles",
-    "price": 24.99
-  }'
-```
-
-### Get all albums with pagination
-
-```bash
-curl -X GET "http://localhost:8080/api/v1/albums?page=1&page_size=10&sort_by=created_at&order=desc" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-## Swagger Documentation
-
-Generate and view Swagger documentation:
-
-```bash
-# Generate Swagger docs
-make swagger
-
-# Run the API and visit
-http://localhost:8080/swagger/index.html
-```
-
-## Database Configuration
-
-### MySQL Setup
-
-1. Create a database:
-
-```sql
-CREATE DATABASE gin_rest_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-2. Update `.env`:
-
-```env
-DATABASE_TYPE=mysql
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=yourpassword
-MYSQL_DATABASE=gin_rest_db
-```
-
-### Firebase Setup
-
-1. Create a Firebase project at https://console.firebase.google.com
-
-2. Enable Firestore Database
-
-3. Generate a service account key:
-    - Go to Project Settings > Service Accounts
-    - Click "Generate New Private Key"
-    - Save as `serviceAccountKey.json` in the project root
-
-4. Update `.env`:
-
-```env
-DATABASE_TYPE=firebase
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CREDENTIALS=./serviceAccountKey.json
-```
-
-## Adding New Resources
-
-To add a new resource (e.g., "Books"):
-
-1. **Add model** in `internal/models/models.go`:
-
-```go
-type Book struct {
-    ID        string    `json:"id" gorm:"primaryKey" firestore:"id"`
-    Title     string    `json:"title" binding:"required"`
-    Author    string    `json:"author" binding:"required"`
-    ISBN      string    `json:"isbn" binding:"required"`
-    UserID    string    `json:"user_id"`
-    CreatedAt time.Time `json:"created_at"`
-    UpdatedAt time.Time `json:"updated_at"`
-}
-```
-
-2. **Add repository methods** in `internal/repository/repository.go`:
-
-```go
-CreateBook(ctx context.Context, book *models.Book) error
-GetBookByID(ctx context.Context, id string) (*models.Book, error)
-// ... other CRUD methods
-```
-
-3. **Implement repository** in both MySQL and Firebase repositories
-
-4. **Add service methods** in `internal/service/service.go`
-
-5. **Add handlers** in `internal/handlers/handlers.go`
-
-6. **Register routes** in `cmd/api/main.go`:
-
-```go
-books := protected.Group("/books")
-{
-    books.GET("", h.GetBooks)
-    books.GET("/:id", h.GetBookByID)
-    books.POST("", h.CreateBook)
-    books.PUT("/:id", h.UpdateBook)
-    books.DELETE("/:id", h.DeleteBook)
-}
-```
-
-## Testing
-
-Run tests:
-
-```bash
+# All tests
 make test
 
-# With coverage
-make test-coverage
+# With coverage reports
+make test-cover
+
+# View coverage in browser
+make test-coverage-html
 ```
 
-## Available Make Commands
+See [docs/TESTING_STATUS.md](docs/TESTING_STATUS.md) for test coverage details.
 
-```bash
-make help              # Display all available commands
-make install           # Install dependencies
-make build             # Build the application
-make run               # Run the application
-make test              # Run tests
-make clean             # Clean build artifacts
-make docker-build      # Build Docker image
-make docker-up         # Start Docker containers
-make docker-down       # Stop Docker containers
-make docker-logs       # View Docker logs
-make swagger           # Generate Swagger documentation
-make lint              # Run linter
-make fmt               # Format code
-```
+## 🚢 Deployment
 
-## Configuration
-
-All configuration is done via environment variables. See `.env.example` for all available options.
-
-### Key Configuration Options
-
-- `ENVIRONMENT` - Environment mode (development/production)
-- `PORT` - Server port
-- `DATABASE_TYPE` - Database type (mysql/firebase)
-- `JWT_SECRET` - Secret key for JWT tokens (change in production!)
-- `JWT_EXPIRATION` - Access token expiration time
-- `JWT_REFRESH_EXPIRATION` - Refresh token expiration time
-- `RATE_LIMIT_REQUESTS` - Number of requests per window
-- `RATE_LIMIT_DURATION` - Rate limit time window
-- `LOG_LEVEL` - Logging level (debug/info/warn/error)
-
-## Security Best Practices
-
-1. **Change the JWT secret** in production
-2. **Use HTTPS** in production
-3. **Set strong passwords** for database
-4. **Enable rate limiting** to prevent abuse
-5. **Keep dependencies updated**
-6. **Don't commit** `.env` or Firebase credentials
-7. **Use environment-specific** configurations
-8. **Implement proper** CORS settings for your frontend domain
-
-## Deployment
-
-### Deploy with Docker
+### Docker Deployment
 
 ```bash
 # Build image
-docker build -t gin-rest-api .
+docker build -t cloakbe .
 
 # Run container
-docker run -p 8080:8080 --env-file .env gin-rest-api
+docker run -p 8080:8080 --env-file .env.prod cloakbe
 ```
 
-### Deploy to Cloud Platforms
+### Cloud Deployment
 
-The template is ready to deploy to:
+Guides available for:
+- **Railway** - See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#railway)
+- **Render** - See [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#render)
+- **AWS EC2/ECS** - Standard Docker deployment
+- **Google Cloud Run** - Containerized deployment
 
-- AWS (ECS, EC2, Elastic Beanstalk)
-- Google Cloud Run
-- Azure Container Instances
-- Heroku
-- DigitalOcean App Platform
+### Environment Setup for Production
 
-## Contributing
+```bash
+cp .env.example .env.prod
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+# Edit with production values:
+# - Strong JWT_SECRET & HMAC_SECRET (use: openssl rand -base64 32)
+# - Prod database URL
+# - Set ENVIRONMENT=production
+# - Set LOG_LEVEL=warn
+```
 
-## License
+## 📝 Development Workflow
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+**Local development (3 terminals):**
 
-## Support
+1. **Terminal 1: PostgreSQL**
+   ```bash
+   make docker-up # Just DB
+   ```
 
-For questions or issues, please open an issue on GitHub.
+2. **Terminal 2: Go API**
+   ```bash
+   make run
+   ```
 
-## Acknowledgments
+3. **Terminal 3: Flutter Frontend**
+   ```bash
+   cd ../CLOAK
+   flutter run -d web
+   ```
 
-- [Gin Web Framework](https://gin-gonic.com/)
-- [GORM](https://gorm.io/)
-- [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
-- [golang-jwt](https://github.com/golang-jwt/jwt)
+Access app at `http://localhost:PORT` (shown by Flutter)
+
+## 🐛 Troubleshooting
+
+### Database Connection Errors
+
+```bash
+# Check if PostgreSQL is running
+psql cloak -c "SELECT 1"
+
+# Reset migrations if needed
+make migrate-down
+make migrate-up
+```
+
+### Port Already in Use
+
+```bash
+# Change PORT in .env
+PORT=8081  # Use different port
+
+# Or kill process on port 8080
+lsof -i :8080 | grep -v PID | awk '{print $2}' | xargs kill
+```
+
+### See more
+
+Check [docs/RAILWAY_TROUBLESHOOTING.md](docs/RAILWAY_TROUBLESHOOTING.md) for detailed troubleshooting.
+
+## 📦 Dependencies
+
+Run `go mod tidy` to update dependencies.
+
+Key packages:
+- `github.com/gofiber/fiber/v2` - Web framework
+- `github.com/jackc/pgx/v5` - PostgreSQL driver
+- `github.com/golang-jwt/jwt` - JWT tokens
+- `golang.org/x/crypto` - Cryptography & bcrypt
+
+## 📄 License
+
+MIT License - See LICENSE file
+
+## 🤝 Contributing
+
+1. Create a feature branch: `git checkout -b feature/your-feature`
+2. Commit changes: `git commit -am 'Add feature'`
+3. Push: `git push origin feature/your-feature`
+4. Open PR
+
+## ❓ Questions?
+
+Refer to [docs/INDEX.md](docs/INDEX.md) for complete documentation index or check individual doc files.
 
 ---
 
-**Happy coding! 🚀**
+**Built with ❤️ for the CLOAK ticketing system**

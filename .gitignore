@@ -1,12 +1,13 @@
-# Environment variables - Never commit these
+# Environment variables - NEVER commit these
 .env
 .env.local
 .env.dev
 .env.prod
 .env.*.local
 .env.production
+.env.mysql-setup
 
-# Build artifacts
+# Build artifacts and binaries
 bin/
 dist/
 build/
@@ -31,7 +32,6 @@ Thumbs.db
 
 # Go-specific
 vendor/
-go.sum
 *.test
 coverage.out
 coverage.html
@@ -41,9 +41,8 @@ coverage.html
 *.db
 *.sqlite
 *.sqlite3
-*.sql
 
-# Firebase credentials - NEVER commit these
+# Firebase and service account keys - NEVER commit these
 serviceAccountKey.json
 firebase-key.json
 *.json.private
@@ -62,7 +61,6 @@ temp/
 cache/
 
 # macOS specific
-.DS_Store
 .AppleDouble
 .LSOverride
 
@@ -70,12 +68,10 @@ cache/
 .~*
 
 # Windows specific
-Thumbs.db
 ehthumbs.db
 Desktop.ini
 
 # Project specific
-dist/
 node_modules/
 yarn.lock
 package-lock.json

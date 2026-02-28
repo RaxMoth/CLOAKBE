@@ -25,10 +25,10 @@ WORKDIR /root/
 
 # Copy the binary from builder
 COPY --from=builder /app/main .
-COPY --from=builder /app/.env.example .env
 
 # Expose port
 EXPOSE 8080
 
 # Run the application
+# DATABASE_URL must be provided as environment variable at runtime
 CMD ["./main"]

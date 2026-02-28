@@ -53,7 +53,12 @@ func Load() (*Config, error) {
 
 	// Validate required fields
 	if cfg.DatabaseURL == "" {
-		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
+		return nil, fmt.Errorf(
+			"DATABASE_URL environment variable is required\n" +
+			"Expected format: postgres://[user]:[password]@[host]:[port]/[database]?sslmode=[disable|require]\n" +
+			"For production, use the actual database host, not localhost\n" +
+			"Example: postgres://user:pass@prod-db.example.com:5432/cloak_db?sslmode=require",
+		)
 	}
 
 	if cfg.Environment == "production" {

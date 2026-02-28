@@ -2,9 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 
+	"CLOAKBE/internal/apperror"
 	"CLOAKBE/internal/database"
 	"CLOAKBE/internal/domain"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // PostgresBusinessRepository implements BusinessRepository for PostgreSQL
@@ -21,14 +25,21 @@ func NewPostgresBusinessRepository(db *database.Pool) *PostgresBusinessRepositor
 func (r *PostgresBusinessRepository) Create(ctx context.Context, b *domain.Business) error {
 	query := `
 		INSERT INTO businesses (id, name, email, password, role, hmac_key, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
-	err := r.db.QueryRow(ctx, query,
-		b.ID, b.Name, b.Email, b.Password, b.Role, b.HMACKey,
-	).Scan()
+	_, err := r.db.Exec(ctx, query,
+		b.ID, b.Name, b.Email, b.Password, b.Role, b.HMACKey, b.CreatedAt, b.UpdatedAt,
+	)
 
-	return err
+	if err != nil {
+		if err.Error() == "ERROR: duplicate key value violates unique constraint \"businesses_email_key\" (SQLSTATE 23505)" {
+			return apperror.NewConflict("email already registered")
+		}
+		return apperror.NewDatabaseError("failed to create business", err)
+	}
+
+	return nil
 }
 
 // FindByID finds a business by ID
@@ -44,7 +55,10 @@ func (r *PostgresBusinessRepository) FindByID(ctx context.Context, id string) (*
 	)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NewNotFound("business")
+		}
+		return nil, apperror.NewDatabaseError("failed to find business by id", err)
 	}
 
 	return b, nil
@@ -63,7 +77,10 @@ func (r *PostgresBusinessRepository) FindByEmail(ctx context.Context, email stri
 	)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NewNotFound("business")
+		}
+		return nil, apperror.NewDatabaseError("failed to find business by email", err)
 	}
 
 	return b, nil
@@ -77,9 +94,13 @@ func (r *PostgresBusinessRepository) Update(ctx context.Context, b *domain.Busin
 		WHERE id = $1
 	`
 
-	err := r.db.QueryRow(ctx, query,
+	_, err := r.db.Exec(ctx, query,
 		b.ID, b.Name, b.Email, b.Password, b.HMACKey,
-	).Scan()
+	)
 
-	return err
+	if err != nil {
+		return apperror.NewDatabaseError("failed to update business", err)
+	}
+
+	return nil
 }

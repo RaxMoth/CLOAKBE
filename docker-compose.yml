@@ -3,51 +3,48 @@ version: '3.8'
 services:
   app:
     build: .
-    container_name: gin-rest-api
+    container_name: cloak-api
     ports:
       - "8080:8080"
     environment:
       - ENVIRONMENT=development
       - PORT=8080
-      - DATABASE_TYPE=mysql
-      - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=rootpassword
-      - MYSQL_DATABASE=gin_rest_db
-      - JWT_SECRET=your-super-secret-jwt-key
-      - JWT_EXPIRATION=15m
-      - JWT_REFRESH_EXPIRATION=168h
-      - RATE_LIMIT_REQUESTS=100
-      - RATE_LIMIT_DURATION=1m
-      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/cloak_db?sslmode=disable
+      - JWT_SECRET=your-super-secret-jwt-key-local-dev-only
+      - HMAC_SECRET=your-super-secret-hmac-key-local-dev-only
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
 
-  mysql:
-    image: mysql:8.0
-    container_name: gin-rest-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: cloak-postgres
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=gin_rest_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=cloak_db
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       timeout: 20s
       retries: 10
     networks:
       - app-network
     restart: unless-stopped
 
+volumes:
+  postgres-data:
+
 networks:
   app-network:
+
     driver: bridge
 
 volumes:

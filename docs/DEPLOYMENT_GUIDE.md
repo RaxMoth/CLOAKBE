@@ -203,6 +203,49 @@ curl -X POST https://your-deployed-url.railway.app/api/v1/auth/business/register
 
 ---
 
+## Troubleshooting
+
+### ❌ Error: "connection refused" or "failed to connect to localhost:5432"
+
+**Cause**: `DATABASE_URL` is using `localhost` or not properly set in deployment environment.
+
+**Solution**:
+
+1. **Check if DATABASE_URL is set in deployment**:
+   - Railway/Render: Verify the database service is added and `DATABASE_URL` appears in environment variables
+   - Custom VPS: Set `DATABASE_URL` environment variable manually
+
+2. **Verify DATABASE_URL format**:
+   ```
+   ❌ WRONG: postgres://postgres:postgres@localhost:5432/cloak_db
+   ✅ CORRECT: postgres://user:pass@prod-db.railway.app:5432/cloak_db?sslmode=require
+   ```
+   - Never use `localhost` in deployment
+   - Use the actual database hostname provided by your hosting platform
+
+3. **Check database connectivity**:
+   ```bash
+   # Test connection from app container
+   pg_isready -h prod-db.railway.app -U postgres
+   ```
+
+4. **Ensure database service is running**:
+   - Railway: The PostgreSQL service should show "UP" in dashboard
+   - Render: Database should be "Available"
+   - Custom: Verify database server is started and accessible
+
+### ✅ Solution: Environment Variables to Set
+
+| Variable | Local Dev | Production |
+|----------|-----------|-----------|
+| `ENVIRONMENT` | `development` | `production` |
+| `PORT` | `8080` | `8080` |
+| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/cloak_db?sslmode=disable` | Get from hosting platform (Railway/Render sets automatically) |
+| `JWT_SECRET` | Dev key (not critical) | **Generate**: `openssl rand -base64 32` |
+| `HMAC_SECRET` | Dev key (not critical) | **Generate**: `openssl rand -base64 32` |
+
+---
+
 ## Cost Breakdown
 
 | Service              | Free Tier              | After Free          |

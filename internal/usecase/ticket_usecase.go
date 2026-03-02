@@ -121,6 +121,23 @@ func (u *TicketUsecase) CheckIn(ctx context.Context, req CheckInRequest) (*Check
 	}, nil
 }
 
+// CustomerCheckIn allows a customer to check in to a service
+func (u *TicketUsecase) CustomerCheckIn(ctx context.Context, serviceID string) (*CheckInResponse, error) {
+	// Fetch service to get business ID
+	service, err := u.serviceRepo.FindByID(ctx, serviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create check-in request with business ID from service
+	req := CheckInRequest{
+		ServiceID:  serviceID,
+		BusinessID: service.BusinessID,
+	}
+
+	return u.CheckIn(ctx, req)
+}
+
 // Scan verifies a QR code and returns ticket status
 func (u *TicketUsecase) Scan(ctx context.Context, req ScanRequest) (*ScanResponse, error) {
 	// Decode QR payload
@@ -195,4 +212,38 @@ func (u *TicketUsecase) Release(ctx context.Context, ticketID, businessID string
 
 	_ = now
 	return nil
+}
+
+// GetCustomerTickets retrieves all tickets for a customer
+func (u *TicketUsecase) GetCustomerTickets(ctx context.Context, customerID string) ([]Ticket, error) {
+	if customerID == "" {
+		return nil, apperror.NewBadRequest("customer_id cannot be empty")
+	}
+
+	tickets, err := u.ticketRepo.ListByCustomerID(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert domain tickets to response tickets
+	response := make([]Ticket, 0)
+	for _, t := range tickets {
+		response = append(response, Ticket{
+			TicketID:   t.ID,
+			SlotNumber: t.SlotNumber,
+			ServiceID:  t.ServiceID,
+			Status:     t.Status,
+			IssuedAt:   t.IssuedAt,
+		})
+	}
+
+	return response, nil
+}
+
+type Ticket struct {
+	TicketID   string `json:"ticket_id"`
+	SlotNumber int    `json:"slot_number"`
+	ServiceID  string `json:"service_id"`
+	Status     string `json:"status"`
+	IssuedAt   int64  `json:"issued_at"`
 }

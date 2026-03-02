@@ -80,7 +80,7 @@ func (r *PostgresTicketRepository) ListByCustomerID(ctx context.Context, custome
 	}
 	defer rows.Close()
 
-	var tickets []domain.Ticket
+	tickets := make([]domain.Ticket, 0)
 	for rows.Next() {
 		var t domain.Ticket
 		if err := rows.Scan(

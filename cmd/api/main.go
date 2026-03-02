@@ -125,7 +125,10 @@ func main() {
 	// Customer routes (role: customer)
 	customer := protected.Group("/tickets")
 	customer.Use(middleware.RoleMiddleware("customer"))
-	customer.Get("/:id", ticketHandler.GetTicket)
+	customer.Post("/checkin", ticketHandler.CustomerCheckIn)
+
+	// Customer ticket list route
+	protected.Get("/customers/:id/tickets", ticketHandler.GetCustomerTickets)
 
 	// Start server with graceful shutdown
 	go func() {

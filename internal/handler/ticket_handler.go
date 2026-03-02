@@ -38,6 +38,32 @@ func (h *TicketHandler) CheckIn(c *fiber.Ctx) error {
 	return c.Status(200).JSON(result)
 }
 
+// CustomerCheckIn handles POST /tickets/checkin - Customer checks in to an event
+func (h *TicketHandler) CustomerCheckIn(c *fiber.Ctx) error {
+	_ = c.Locals("user_id").(string) // customerID - for future use (tracking which customer checked in)
+
+	var req struct {
+		ServiceID string `json:"service_id"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		appErr := apperror.NewBadRequest("invalid request body")
+		return c.Status(appErr.StatusCode).JSON(errorResponse(appErr))
+	}
+
+	if req.ServiceID == "" {
+		appErr := apperror.NewBadRequest("service_id is required")
+		return c.Status(appErr.StatusCode).JSON(errorResponse(appErr))
+	}
+
+	result, err := h.ticketUsecase.CustomerCheckIn(c.Context(), req.ServiceID)
+	if err != nil {
+		appErr := apperror.From(err)
+		return c.Status(appErr.StatusCode).JSON(errorResponse(appErr))
+	}
+
+	return c.Status(200).JSON(result)
+}
+
 // Scan handles POST /tickets/scan - Business scans QR code
 func (h *TicketHandler) Scan(c *fiber.Ctx) error {
 	businessID := c.Locals("user_id").(string)
@@ -77,20 +103,23 @@ func (h *TicketHandler) Release(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{"success": true})
 }
 
-// GetTicket handles GET /tickets/:id - Customer views their ticket
-func (h *TicketHandler) GetTicket(c *fiber.Ctx) error {
-	_ = c.Locals("user_id").(string) // customerID - will be used when implementing actual logic
-	ticketID := c.Params("id")
-
-	if ticketID == "" {
-		appErr := apperror.NewBadRequest("invalid ticket ID")
+// GetCustomerTickets handles GET /customers/:id/tickets - Get all tickets for a customer
+func (h *TicketHandler) GetCustomerTickets(c *fiber.Ctx) error {
+	customerID := c.Params("id")
+	if customerID == "" {
+		appErr := apperror.NewBadRequest("invalid customer ID")
 		return c.Status(appErr.StatusCode).JSON(errorResponse(appErr))
 	}
 
-	// TODO: Implement GetTicket in usecase to fetch and verify customer owns ticket
-	// For now returning not found
-	err := apperror.NewNotFound("ticket endpoint not yet implemented")
-	return c.Status(err.StatusCode).JSON(errorResponse(err))
+	tickets, err := h.ticketUsecase.GetCustomerTickets(c.Context(), customerID)
+	if err != nil {
+		appErr := apperror.From(err)
+		return c.Status(appErr.StatusCode).JSON(errorResponse(appErr))
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"tickets": tickets,
+	})
 }
 
 func errorResponse(err *apperror.AppError) fiber.Map {

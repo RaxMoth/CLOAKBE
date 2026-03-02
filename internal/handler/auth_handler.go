@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"log"
+
 	"CLOAKBE/internal/apperror"
 	"CLOAKBE/internal/usecase"
 
@@ -27,6 +29,7 @@ func (h *AuthHandler) BusinessRegister(c *fiber.Ctx) error {
 
 	result, err := h.authUsecase.BusinessRegister(c.Context(), req)
 	if err != nil {
+		log.Printf("BusinessRegister error: %v (type: %T)", err, err)
 		appErr := apperror.From(err)
 		return c.Status(appErr.StatusCode).JSON(errorResponse(appErr))
 	}
